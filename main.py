@@ -33,14 +33,14 @@ class TerminalOpener(QThread):
         self.container_id = container_id
 
     def run(self):
-        docker_command = f"docker exec -it {self.container_id} /bin/bash"
+        docker_command = f"docker exec -it {self.container_id} sh -c '[ -x /bin/bash ] && exec /bin/bash || exec /bin/sh'"
         system = platform.system()
 
         try:
             if system == "Darwin":  # macOS
-                subprocess.Popen(['open', '-a', 'Terminal', '--', 'bash', '-c', f"{docker_command}"])
+                subprocess.Popen(['open', '-a', 'Terminal', '--', 'sh', '-c', f"{docker_command}"])
             elif system == "Linux":
-                subprocess.Popen(['x-terminal-emulator', '-e', f"bash -c '{docker_command}'"])
+                subprocess.Popen(['x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
             elif system == "Windows":
                 subprocess.Popen(['start', 'cmd', '/k', docker_command], shell=True)
             else:
