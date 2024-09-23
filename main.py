@@ -327,18 +327,21 @@ class DockerGUI(QMainWindow):
         self.containers_tree.clear()
         try:
             output = subprocess.check_output(["docker", "ps", "-a", "--format", "{{.ID}}\\t{{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}"], stderr=subprocess.STDOUT)
-            containers = output.decode().strip().split("\n")
-            for container in containers:
-                parts = container.split("\t")
-                id, name, image, status = parts[:4]
-                ports = parts[4] if len(parts) > 4 else ""
-                item = QTreeWidgetItem([id, name, image, "", ports])  # Empty string for status column
-                status_widget = StatusDelegate(status)
-                self.containers_tree.addTopLevelItem(item)
-                self.containers_tree.setItemWidget(item, 3, status_widget)
+            if output.strip():
+                containers = output.decode().strip().split("\n")
+                for container in containers:
+                    parts = container.split("\t")
+                    id, name, image, status = parts[:4]
+                    ports = parts[4] if len(parts) > 4 else ""
+                    item = QTreeWidgetItem([id, name, image, "", ports])  # Empty string for status column
+                    status_widget = StatusDelegate(status)
+                    self.containers_tree.addTopLevelItem(item)
+                    self.containers_tree.setItemWidget(item, 3, status_widget)
             self.restore_selection(self.containers_tree, selected_items)
         except subprocess.CalledProcessError as e:
             print(f"Error refreshing containers: {e.output.decode()}")
+        except ValueError as e:
+            print(f"Error parsing container list {repr(containers)}")
         except Exception as e:
             print(f"Unexpected error refreshing containers: {str(e)}")
         QTimer.singleShot(0, lambda: self.containers_tree.verticalScrollBar().setValue(scroll_position))
