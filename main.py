@@ -51,7 +51,7 @@ class TerminalOpener(QThread):
 class DockerGUI(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Docker GUI")
+        self.setWindowTitle("Qocker - Docker Graphical User Interface")
         self.setGeometry(100, 100, 1000, 600)
 
         # Create central widget and layout
