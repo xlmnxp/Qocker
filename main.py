@@ -229,6 +229,13 @@ class DockerGUI(QMainWindow):
             self.create_volume_action.setVisible(True)
             self.remove_volume_action.setVisible(True)
 
+    # override QMainWindow.createPopupMenu
+    def createPopupMenu(self):
+        filtered_menu = super(DockerGUI, self).createPopupMenu()
+        filtered_menu.removeAction(self.toolbar.toggleViewAction())
+
+        return filtered_menu
+
     def update_visible_tabs(self, index):
         for i in range(self.tab_widget.count()):
             if i == index:
