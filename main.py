@@ -48,6 +48,29 @@ class TerminalOpener(QThread):
         except Exception as e:
             self.error.emit(f"Failed to open terminal: {str(e)}")
 
+class LogsOpener(QThread):
+    error = pyqtSignal(str)
+
+    def __init__(self, container_id):
+        super().__init__()
+        self.container_id = container_id
+
+    def run(self):
+        docker_command = f"docker logs -f {self.container_id}"
+        system = platform.system()
+
+        try:
+            if system == "Darwin":  # macOS
+                subprocess.Popen(['open', '-a', 'Terminal', '--', 'sh', '-c', f"{docker_command}"])
+            elif system == "Linux":
+                subprocess.Popen(['x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
+            elif system == "Windows":
+                subprocess.Popen(['start', 'cmd', '/k', docker_command], shell=True)
+            else:
+                self.error.emit(f"Opening a terminal is not supported on {system}")
+        except Exception as e:
+            self.error.emit(f"Failed to open terminal: {str(e)}")
+
 class DockerGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -199,6 +222,11 @@ class DockerGUI(QMainWindow):
         self.terminal_action = QAction(QIcon.fromTheme("utilities-terminal"), "Open Terminal", self)
         self.terminal_action.triggered.connect(self.open_terminal)
         self.toolbar.addAction(self.terminal_action)
+        
+        # Add logs action
+        self.logs_action = QAction(QIcon.fromTheme("document-open"), "Open Logs", self)
+        self.logs_action.triggered.connect(self.open_logs)
+        self.toolbar.addAction(self.logs_action)
 
     def update_toolbar_buttons(self, index):
         # Hide all specific actions
@@ -212,6 +240,7 @@ class DockerGUI(QMainWindow):
         self.terminal_action.setVisible(False)
         self.pull_image_action.setVisible(False)
         self.remove_image_action.setVisible(False)
+        self.logs_action.setVisible(False)
 
         # Show actions based on the current tab
         if index == 0:  # Containers tab
@@ -219,6 +248,7 @@ class DockerGUI(QMainWindow):
             self.stop_action.setVisible(True)
             self.remove_action.setVisible(True)
             self.terminal_action.setVisible(True)
+            self.logs_action.setVisible(True)
         elif index == 1:  # Images tab
             self.pull_image_action.setVisible(True)
             self.remove_image_action.setVisible(True)
@@ -270,6 +300,8 @@ class DockerGUI(QMainWindow):
         if current_tab == self.containers_tab:
             terminal_action = QAction("Terminal", self)
             terminal_action.triggered.connect(lambda: self.handle_action("Terminal"))
+            logs_action = QAction("Logs", self)
+            logs_action.triggered.connect(lambda: self.open_logs())
             start_action = QAction("Start", self)
             start_action.triggered.connect(lambda: self.handle_action("Start"))
             stop_action = QAction("Stop", self)
@@ -277,6 +309,8 @@ class DockerGUI(QMainWindow):
             remove_action = QAction("Remove", self)
             remove_action.triggered.connect(lambda: self.handle_action("Remove"))
             context_menu.addAction(terminal_action)
+            context_menu.addAction(logs_action)
+            context_menu.addSeparator()
             context_menu.addAction(start_action)
             context_menu.addAction(stop_action)
             context_menu.addAction(remove_action)
@@ -286,6 +320,7 @@ class DockerGUI(QMainWindow):
             remove_action = QAction("Remove", self)
             remove_action.triggered.connect(self.remove_image)
             context_menu.addAction(pull_action)
+            context_menu.addSeparator()
             context_menu.addAction(remove_action)
         elif current_tab == self.networks_tab:
             remove_action = QAction("Remove", self)
@@ -605,6 +640,21 @@ class DockerGUI(QMainWindow):
         self.terminal_opener.start()
 
     def show_terminal_error(self, error_message):
+        QMessageBox.critical(self, "Error", error_message)
+        
+    def open_logs(self):
+        selected_items = self.containers_tree.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No Selection", "Please select a container to open logs.")
+            return
+
+        container_id = selected_items[0].text(0)
+
+        self.logs_opener = LogsOpener(container_id)
+        self.logs_opener.error.connect(self.show_logs_error)
+        self.logs_opener.start()
+
+    def show_logs_error(self, error_message):
         QMessageBox.critical(self, "Error", error_message)
 
 if __name__ == "__main__":
