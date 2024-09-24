@@ -302,7 +302,6 @@ class DockerGUI(QMainWindow):
                 subprocess.run(["docker", "volume", "rm", volume_name])
 
         self.refresh_data()
-        self.refresh_volumes()
 
     def refresh_data(self):
         self.refresh_containers()
