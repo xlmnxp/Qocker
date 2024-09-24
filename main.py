@@ -357,7 +357,7 @@ class DockerGUI(QMainWindow):
                 self.restore_selection(self.containers_tree, selected_items)
         except subprocess.CalledProcessError as e:
             print(f"Error refreshing containers: {e.output.decode()}")
-        except ValueError as e:
+        except ValueError:
             print(f"Error parsing container list {repr(containers)}")
         except Exception as e:
             print(f"Unexpected error refreshing containers: {str(e)}")
