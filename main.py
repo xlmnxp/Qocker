@@ -68,10 +68,12 @@ class DockerGUI(QMainWindow):
 
         # Create tabs
         self.containers_tab = QWidget()
+        self.images_tab = QWidget()
         self.networks_tab = QWidget()
         self.volumes_tab = QWidget()
 
         self.tab_widget.addTab(self.containers_tab, "Containers")
+        self.tab_widget.addTab(self.images_tab, "Images")
         self.tab_widget.addTab(self.networks_tab, "Networks")
         self.tab_widget.addTab(self.volumes_tab, "Volumes")
 
@@ -80,6 +82,7 @@ class DockerGUI(QMainWindow):
 
         # Create tree widgets for each tab
         self.containers_tree = self.create_tree_widget(["ID", "Name", "Image", "Status", "Ports"])
+        self.images_tree = self.create_tree_widget(["ID", "Repository", "Tag", "Size"])
         self.networks_tree = self.create_tree_widget(["ID", "Name", "Driver"])
         self.volumes_tree = self.create_tree_widget(["Name", "Driver", "Mountpoint"])
 
@@ -87,6 +90,7 @@ class DockerGUI(QMainWindow):
 
         # Add tree widgets to tabs
         self.setup_tab(self.containers_tab, self.containers_tree, "Search containers...")
+        self.setup_tab(self.images_tab, self.images_tree, "Search images...")
         self.setup_tab(self.networks_tab, self.networks_tree, "Search networks...")
         self.setup_tab(self.volumes_tab, self.volumes_tree, "Search volumes...")
 
@@ -108,11 +112,16 @@ class DockerGUI(QMainWindow):
         tree.setContextMenuPolicy(Qt.CustomContextMenu)
         tree.customContextMenuRequested.connect(self.show_context_menu)
         tree.header().setSectionResizeMode(QHeaderView.Interactive)
+        tree.header().setSortIndicator(0, Qt.DescendingOrder)
+        tree.header().setSortIndicatorShown(True)
+        tree.header().sortIndicatorChanged.connect(lambda col, order: self.sort_tree_widget(tree, col, order))
         return tree
+    
+    def sort_tree_widget(self, tree, column, order):
+        tree.sortItems(column, order)
 
     def setup_tab(self, tab, tree, search_placeholder):
         layout = QVBoxLayout(tab)
-
         # Add search bar
         search_bar = QLineEdit()
         search_bar.setPlaceholderText(search_placeholder)
@@ -158,6 +167,15 @@ class DockerGUI(QMainWindow):
         self.remove_action = QAction(QIcon.fromTheme("edit-delete"), "Remove", self)
         self.remove_action.triggered.connect(self.remove_container)
         self.toolbar.addAction(self.remove_action)
+        
+        # Image-specific actions
+        self.pull_image_action = QAction(QIcon.fromTheme("download"), "Pull Image", self)
+        self.pull_image_action.triggered.connect(self.pull_image)
+        self.toolbar.addAction(self.pull_image_action)
+
+        self.remove_image_action = QAction(QIcon.fromTheme("edit-delete"), "Remove Image", self)
+        self.remove_image_action.triggered.connect(self.remove_image)
+        self.toolbar.addAction(self.remove_image_action)
 
         # Network-specific actions
         self.create_network_action = QAction(QIcon.fromTheme("list-add"), "Create Network", self)
@@ -192,6 +210,8 @@ class DockerGUI(QMainWindow):
         self.create_volume_action.setVisible(False)
         self.remove_volume_action.setVisible(False)
         self.terminal_action.setVisible(False)
+        self.pull_image_action.setVisible(False)
+        self.remove_image_action.setVisible(False)
 
         # Show actions based on the current tab
         if index == 0:  # Containers tab
@@ -199,10 +219,13 @@ class DockerGUI(QMainWindow):
             self.stop_action.setVisible(True)
             self.remove_action.setVisible(True)
             self.terminal_action.setVisible(True)
-        elif index == 1:  # Networks tab
+        elif index == 1:  # Images tab
+            self.pull_image_action.setVisible(True)
+            self.remove_image_action.setVisible(True)
+        elif index == 2:  # Networks tab
             self.create_network_action.setVisible(True)
             self.remove_network_action.setVisible(True)
-        elif index == 2:  # Volumes tab
+        elif index == 3:  # Volumes tab
             self.create_volume_action.setVisible(True)
             self.remove_volume_action.setVisible(True)
 
@@ -250,6 +273,13 @@ class DockerGUI(QMainWindow):
             context_menu.addAction(start_action)
             context_menu.addAction(stop_action)
             context_menu.addAction(remove_action)
+        elif current_tab == self.images_tab:
+            pull_action = QAction("Pull", self)
+            pull_action.triggered.connect(self.pull_image)
+            remove_action = QAction("Remove", self)
+            remove_action.triggered.connect(self.remove_image)
+            context_menu.addAction(pull_action)
+            context_menu.addAction(remove_action)
         elif current_tab == self.networks_tab:
             remove_action = QAction("Remove", self)
             remove_action.triggered.connect(lambda: self.handle_action("Remove"))
@@ -260,8 +290,6 @@ class DockerGUI(QMainWindow):
             context_menu.addAction(remove_action)
 
         context_menu.exec_(current_tab.mapToGlobal(position))
-
-        # Connect the triggered signal of the context menu actions to a handler
 
     def setup_auto_refresh(self):
         self.refresh_timer = QTimer(self)
@@ -305,6 +333,7 @@ class DockerGUI(QMainWindow):
 
     def refresh_data(self):
         self.refresh_containers()
+        self.refresh_images()
         self.refresh_networks()
         self.refresh_volumes()
 
@@ -324,7 +353,8 @@ class DockerGUI(QMainWindow):
                     status_widget = StatusDelegate(status)
                     self.containers_tree.addTopLevelItem(item)
                     self.containers_tree.setItemWidget(item, 3, status_widget)
-            self.restore_selection(self.containers_tree, selected_items)
+                self.filter_tree(self.containers_tree, self.containers_tab.findChild(QLineEdit).text())
+                self.restore_selection(self.containers_tree, selected_items)
         except subprocess.CalledProcessError as e:
             print(f"Error refreshing containers: {e.output.decode()}")
         except ValueError as e:
@@ -333,18 +363,42 @@ class DockerGUI(QMainWindow):
             print(f"Unexpected error refreshing containers: {str(e)}")
         QTimer.singleShot(0, lambda: self.containers_tree.verticalScrollBar().setValue(scroll_position))
 
+    def refresh_images(self):
+        scroll_position = self.images_tree.verticalScrollBar().value()
+        selected_items = self.get_selected_items(self.images_tree)
+        self.images_tree.clear()
+        try:
+            output = subprocess.check_output(["docker", "images", "--format", "{{.ID}}\\t{{.Repository}}\\t{{.Tag}}\\t{{.Size}}"], stderr=subprocess.STDOUT)
+            if output.strip():
+                images = output.decode().strip().split("\n")
+                for image in images:
+                    id, repository, tag, size = image.split("\t")
+                    item = QTreeWidgetItem([id, repository, tag, size])
+                    self.images_tree.addTopLevelItem(item)
+                
+                self.sort_tree_widget(self.images_tree, 0, Qt.DescendingOrder)
+                self.filter_tree(self.images_tree, self.images_tab.findChild(QLineEdit).text())
+                self.restore_selection(self.images_tree, selected_items)
+        except subprocess.CalledProcessError as e:
+            print(f"Error refreshing images: {e.output.decode()}")
+        except Exception as e:
+            print(f"Unexpected error refreshing images: {str(e)}")
+        QTimer.singleShot(0, lambda: self.images_tree.verticalScrollBar().setValue(scroll_position))
+
     def refresh_networks(self):
         scroll_position = self.networks_tree.verticalScrollBar().value()
         selected_items = self.get_selected_items(self.networks_tree)
         self.networks_tree.clear()
         try:
             output = subprocess.check_output(["docker", "network", "ls", "--format", "{{.ID}}\\t{{.Name}}\\t{{.Driver}}"], stderr=subprocess.STDOUT)
-            networks = output.decode().strip().split("\n")
-            for network in networks:
-                id, name, driver = network.split("\t")
-                item = QTreeWidgetItem([id, name, driver])
-                self.networks_tree.addTopLevelItem(item)
-            self.restore_selection(self.networks_tree, selected_items)
+            if output.strip():
+                networks = output.decode().strip().split("\n")
+                for network in networks:
+                    id, name, driver = network.split("\t")
+                    item = QTreeWidgetItem([id, name, driver])
+                    self.networks_tree.addTopLevelItem(item)
+                self.filter_tree(self.networks_tree, self.networks_tab.findChild(QLineEdit).text())
+                self.restore_selection(self.networks_tree, selected_items)
         except subprocess.CalledProcessError as e:
             print(f"Error refreshing networks: {e.output.decode()}")
         except Exception as e:
@@ -363,6 +417,7 @@ class DockerGUI(QMainWindow):
                     name, driver, mountpoint = volume.split("\t")
                     item = QTreeWidgetItem([name, driver, mountpoint])
                     self.volumes_tree.addTopLevelItem(item)
+                self.filter_tree(self.volumes_tree, self.volumes_tab.findChild(QLineEdit).text())
                 self.restore_selection(self.volumes_tree, selected_items)
         except subprocess.CalledProcessError as e:
             print(f"Error refreshing volumes: {e.output.decode()}")
@@ -430,6 +485,39 @@ class DockerGUI(QMainWindow):
                     QMessageBox.critical(self, "Error", f"Failed to remove container {container_id}: {e}")
 
         self.refresh_containers()
+        
+    def pull_image(self):
+        image_name, ok = QInputDialog.getText(self, "Pull Image", "Enter image name (e.g., ubuntu:latest):")
+        if ok and image_name:
+            try:
+                subprocess.run(["docker", "pull", image_name], check=True)
+                print(f"Pulled image: {image_name}")
+                QMessageBox.information(self, "Success", f"Image '{image_name}' pulled successfully.")
+            except subprocess.CalledProcessError as e:
+                QMessageBox.critical(self, "Error", f"Failed to pull image: {e}")
+
+        self.refresh_images()
+
+    def remove_image(self):
+        selected_items = self.images_tree.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No Selection", "Please select an image to remove.")
+            return
+
+        for item in selected_items:
+            image_id = item.text(0)
+            reply = QMessageBox.question(self, "Confirm Removal", 
+                                        f"Are you sure you want to remove image {image_id}?",
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                try:
+                    subprocess.run(["docker", "rmi", image_id], check=True)
+                    print(f"Removed image: {image_id}")
+                    QMessageBox.information(self, "Success", f"Image '{image_id}' removed successfully.")
+                except subprocess.CalledProcessError as e:
+                    QMessageBox.critical(self, "Error", f"Failed to remove image {image_id}: {e}")
+
+        self.refresh_images()
 
     def create_network(self):
         network_name, ok = QInputDialog.getText(self, "Create Network", "Enter network name:")
