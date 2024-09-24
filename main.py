@@ -13,14 +13,14 @@ class StatusDelegate(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(8)
-        
+
         self.status_circle = QWidget()
         self.status_circle.setFixedSize(12, 12)
         color = QColor('green') if 'Up' in status else QColor('red')
         self.status_circle.setStyleSheet(f"background-color: {color.name()}; border-radius: 6px;")
-        
+
         self.status_label = QLabel(status)
-        
+
         layout.addWidget(self.status_circle)
         layout.addWidget(self.status_label)
         layout.addStretch()
@@ -85,7 +85,7 @@ class DockerGUI(QMainWindow):
         self.images_tree = self.create_tree_widget(["ID", "Repository", "Tag", "Size"])
         self.networks_tree = self.create_tree_widget(["ID", "Name", "Driver"])
         self.volumes_tree = self.create_tree_widget(["Name", "Driver", "Mountpoint"])
-        
+
         self.containers_tree.itemDoubleClicked.connect(self.open_terminal)
 
         # Add tree widgets to tabs
@@ -127,7 +127,7 @@ class DockerGUI(QMainWindow):
         search_bar.setPlaceholderText(search_placeholder)
         search_bar.textChanged.connect(lambda text: self.filter_tree(tree, text))
         layout.addWidget(search_bar)
-        
+
         layout.addWidget(tree)
 
     def filter_tree(self, tree, text):
@@ -185,7 +185,7 @@ class DockerGUI(QMainWindow):
         self.remove_network_action = QAction(QIcon.fromTheme("edit-delete"), "Remove Network", self)
         self.remove_network_action.triggered.connect(self.remove_network)
         self.toolbar.addAction(self.remove_network_action)
-        
+
         # Volume-specific actions
         self.create_volume_action = QAction(QIcon.fromTheme("list-add"), "Create Volume", self)
         self.create_volume_action.triggered.connect(self.create_volume)
@@ -194,7 +194,7 @@ class DockerGUI(QMainWindow):
         self.remove_volume_action = QAction(QIcon.fromTheme("edit-delete"), "Remove Volume", self)
         self.remove_volume_action.triggered.connect(self.remove_volume)
         self.toolbar.addAction(self.remove_volume_action)
-        
+
         # Add terminal action
         self.terminal_action = QAction(QIcon.fromTheme("utilities-terminal"), "Open Terminal", self)
         self.terminal_action.triggered.connect(self.open_terminal)
@@ -269,7 +269,7 @@ class DockerGUI(QMainWindow):
             stop_action.triggered.connect(lambda: self.handle_action("Stop"))
             remove_action = QAction("Remove", self)
             remove_action.triggered.connect(lambda: self.handle_action("Remove"))
-            context_menu.addAction(terminal_action)            
+            context_menu.addAction(terminal_action)
             context_menu.addAction(start_action)
             context_menu.addAction(stop_action)
             context_menu.addAction(remove_action)
@@ -290,7 +290,7 @@ class DockerGUI(QMainWindow):
             context_menu.addAction(remove_action)
 
         context_menu.exec_(current_tab.mapToGlobal(position))
-    
+
     def setup_auto_refresh(self):
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh_data)
@@ -330,19 +330,6 @@ class DockerGUI(QMainWindow):
                 subprocess.run(["docker", "volume", "rm", volume_name])
 
         self.refresh_data()
-
-        self.volumes_tree.clear()
-        try:
-            output = subprocess.check_output(["docker", "volume", "ls", "--format", "{{.Name}}\\t{{.Driver}}\\t{{.Mountpoint}}"], stderr=subprocess.STDOUT)
-            volumes = output.decode().strip().split("\n")
-            for volume in volumes:
-                name, driver, mountpoint = volume.split("\t")
-                item = QTreeWidgetItem([name, driver, mountpoint])
-                self.volumes_tree.addTopLevelItem(item)
-        except subprocess.CalledProcessError as e:
-            print(f"Error refreshing volumes: {e.output.decode()}")
-        except Exception as e:
-            print(f"Unexpected error refreshing volumes: {str(e)}")
 
     def refresh_data(self):
         self.refresh_containers()
@@ -424,13 +411,14 @@ class DockerGUI(QMainWindow):
         self.volumes_tree.clear()
         try:
             output = subprocess.check_output(["docker", "volume", "ls", "--format", "{{.Name}}\\t{{.Driver}}\\t{{.Mountpoint}}"], stderr=subprocess.STDOUT)
-            volumes = output.decode().strip().split("\n")
-            for volume in volumes:
-                name, driver, mountpoint = volume.split("\t")
-                item = QTreeWidgetItem([name, driver, mountpoint])
-                self.volumes_tree.addTopLevelItem(item)
-            self.filter_tree(self.volumes_tree, self.volumes_tab.findChild(QLineEdit).text())
-            self.restore_selection(self.volumes_tree, selected_items)
+            if output.strip():
+                volumes = output.decode().strip().split("\n")
+                for volume in volumes:
+                    name, driver, mountpoint = volume.split("\t")
+                    item = QTreeWidgetItem([name, driver, mountpoint])
+                    self.volumes_tree.addTopLevelItem(item)
+                self.filter_tree(self.volumes_tree, self.volumes_tab.findChild(QLineEdit).text())
+                self.restore_selection(self.volumes_tree, selected_items)
         except subprocess.CalledProcessError as e:
             print(f"Error refreshing volumes: {e.output.decode()}")
         except Exception as e:
@@ -486,7 +474,7 @@ class DockerGUI(QMainWindow):
 
         for item in selected_items:
             container_id = item.text(0)
-            reply = QMessageBox.question(self, "Confirm Removal", 
+            reply = QMessageBox.question(self, "Confirm Removal",
                                          f"Are you sure you want to remove container {container_id}?",
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.Yes:
@@ -542,7 +530,7 @@ class DockerGUI(QMainWindow):
                 QMessageBox.critical(self, "Error", f"Failed to create network: {e}")
 
         self.refresh_networks()
-        
+
     def remove_network(self):
         selected_items = self.networks_tree.selectedItems()
         if not selected_items:
@@ -551,7 +539,7 @@ class DockerGUI(QMainWindow):
 
         for item in selected_items:
             network_name = item.text(1)  # Assuming the network name is in the second column
-            reply = QMessageBox.question(self, "Confirm Removal", 
+            reply = QMessageBox.question(self, "Confirm Removal",
                                          f"Are you sure you want to remove network {network_name}?",
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.Yes:
@@ -584,7 +572,7 @@ class DockerGUI(QMainWindow):
 
         for item in selected_items:
             volume_name = item.text(0)  # Assuming the volume name is in the first column
-            reply = QMessageBox.question(self, "Confirm Removal", 
+            reply = QMessageBox.question(self, "Confirm Removal",
                                          f"Are you sure you want to remove volume {volume_name}?",
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.Yes:
@@ -596,7 +584,7 @@ class DockerGUI(QMainWindow):
                     QMessageBox.critical(self, "Error", f"Failed to remove volume {volume_name}: {e}")
 
         self.refresh_volumes()
-        
+
     def open_terminal(self):
         selected_items = self.containers_tree.selectedItems()
         if not selected_items:
@@ -604,7 +592,7 @@ class DockerGUI(QMainWindow):
             return
 
         container_id = selected_items[0].text(0)
-        
+
         self.terminal_opener = TerminalOpener(container_id)
         self.terminal_opener.error.connect(self.show_terminal_error)
         self.terminal_opener.start()
