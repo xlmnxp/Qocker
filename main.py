@@ -1,9 +1,9 @@
 import sys
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QTreeWidget, QTreeWidgetItem,
-                             QVBoxLayout, QHBoxLayout, QWidget, QToolBar, QAction, QMenu,
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QTabWidget, QTreeWidget, QTreeWidgetItem,
+                             QVBoxLayout, QHBoxLayout, QWidget, QToolBar, QMenu,
                              QHeaderView, QLabel, QLineEdit, QCheckBox, QMessageBox, QInputDialog)
-from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt6.QtGui import QIcon, QColor, QAction
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 import subprocess
 import platform
 
@@ -132,10 +132,10 @@ class DockerGUI(QMainWindow):
     def create_tree_widget(self, headers):
         tree = QTreeWidget()
         tree.setHeaderLabels(headers)
-        tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         tree.customContextMenuRequested.connect(self.show_context_menu)
-        tree.header().setSectionResizeMode(QHeaderView.Interactive)
-        tree.header().setSortIndicator(0, Qt.DescendingOrder)
+        tree.header().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        tree.header().setSortIndicator(0, Qt.SortOrder.DescendingOrder)
         tree.header().setSortIndicatorShown(True)
         tree.header().sortIndicatorChanged.connect(lambda col, order: self.sort_tree_widget(tree, col, order))
         return tree
@@ -162,7 +162,7 @@ class DockerGUI(QMainWindow):
     def create_toolbar(self):
         self.toolbar = QToolBar()
         self.toolbar.setMovable(False)  # Make toolbar fixed
-        self.addToolBar(Qt.TopToolBarArea, self.toolbar)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolbar)
 
         # Common actions
         self.refresh_action = QAction(QIcon.fromTheme("view-refresh"), "Refresh", self)
@@ -331,7 +331,7 @@ class DockerGUI(QMainWindow):
             remove_action.triggered.connect(lambda: self.handle_action("Remove"))
             context_menu.addAction(remove_action)
 
-        context_menu.exec_(current_tab.mapToGlobal(position))
+        context_menu.exec(current_tab.mapToGlobal(position))
 
     def setup_auto_refresh(self):
         self.refresh_timer = QTimer(self)
@@ -340,7 +340,7 @@ class DockerGUI(QMainWindow):
             self.refresh_timer.start(1000)  # 1000 ms = 1 second
 
     def toggle_auto_refresh(self, state):
-        if state == Qt.Checked:
+        if state == Qt.CheckState.Checked.value:
             self.refresh_timer.start(1000)
         else:
             self.refresh_timer.stop()
@@ -418,7 +418,7 @@ class DockerGUI(QMainWindow):
                     item = QTreeWidgetItem([id, repository, tag, size])
                     self.images_tree.addTopLevelItem(item)
                 
-                self.sort_tree_widget(self.images_tree, 0, Qt.DescendingOrder)
+                self.sort_tree_widget(self.images_tree, 0, Qt.SortOrder.DescendingOrder)
                 self.filter_tree(self.images_tree, self.images_tab.findChild(QLineEdit).text())
                 self.restore_selection(self.images_tree, selected_items)
         except subprocess.CalledProcessError as e:
@@ -518,8 +518,8 @@ class DockerGUI(QMainWindow):
             container_id = item.text(0)
             reply = QMessageBox.question(self, "Confirm Removal",
                                          f"Are you sure you want to remove container {container_id}?",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if reply == QMessageBox.Yes:
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
                 try:
                     subprocess.run(["docker", "rm", "-f", container_id], check=True)
                     print(f"Removed container: {container_id}")
@@ -550,8 +550,8 @@ class DockerGUI(QMainWindow):
             image_id = item.text(0)
             reply = QMessageBox.question(self, "Confirm Removal", 
                                         f"Are you sure you want to remove image {image_id}?",
-                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if reply == QMessageBox.Yes:
+                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
                 try:
                     subprocess.run(["docker", "rmi", image_id], check=True)
                     print(f"Removed image: {image_id}")
@@ -583,8 +583,8 @@ class DockerGUI(QMainWindow):
             network_name = item.text(1)  # Assuming the network name is in the second column
             reply = QMessageBox.question(self, "Confirm Removal",
                                          f"Are you sure you want to remove network {network_name}?",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if reply == QMessageBox.Yes:
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
                 try:
                     subprocess.run(["docker", "network", "rm", network_name], check=True)
                     print(f"Removed network: {network_name}")
@@ -616,8 +616,8 @@ class DockerGUI(QMainWindow):
             volume_name = item.text(0)  # Assuming the volume name is in the first column
             reply = QMessageBox.question(self, "Confirm Removal",
                                          f"Are you sure you want to remove volume {volume_name}?",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if reply == QMessageBox.Yes:
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
                 try:
                     subprocess.run(["docker", "volume", "rm", volume_name], check=True)
                     print(f"Removed volume: {volume_name}")
@@ -661,4 +661,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = DockerGUI()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
