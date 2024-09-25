@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QTreeWidget, QTreeWidgetItem,
                              QVBoxLayout, QHBoxLayout, QWidget, QToolBar, QAction, QMenu,
