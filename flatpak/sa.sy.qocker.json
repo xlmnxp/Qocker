@@ -8,6 +8,21 @@
     "command": "qocker",
     "modules": [
         {
+            "name": "docker-cli",
+            "buildsystem": "simple",
+            "build-commands": [
+                "tar xzvf docker-20.10.9.tgz",
+                "install -D docker/docker /app/bin/docker"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://download.docker.com/linux/static/stable/x86_64/docker-20.10.9.tgz",
+                    "sha256": "caf74e54b58c0b38bb4d96c8f87665f29b684371c9a325562a3904b8c389995e"
+                }
+            ]
+        },
+        {
             "name": "qocker",
             "buildsystem": "simple",
             "build-commands": [
@@ -15,9 +30,8 @@
             ],
             "sources": [
                 {
-                    "type": "git",
-                    "url": "https://github.com/xlmnxp/qocker.git",
-                    "tag": "v0.2"
+                    "type": "dir",
+                    "path": ".."
                 }
             ]
         }
@@ -26,6 +40,9 @@
         "--share=network",
         "--socket=fallback-x11",
         "--socket=wayland",
-        "--filesystem=/run/docker.sock"
+        "--env=DOCKER_HOST=unix:///run/docker.sock",
+        "--filesystem=/run/docker.sock",
+        "--system-talk-name=org.freedesktop.DBus",
+        "--socket=session-bus"
     ]
 }

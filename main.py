@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import os
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QTreeWidget, QTreeWidgetItem,
                              QVBoxLayout, QHBoxLayout, QWidget, QToolBar, QAction, QMenu,
                              QHeaderView, QLabel, QLineEdit, QCheckBox, QMessageBox, QInputDialog)
@@ -41,7 +42,11 @@ class TerminalOpener(QThread):
             if system == "Darwin":  # macOS
                 subprocess.Popen(['open', '-a', 'Terminal', '--', 'sh', '-c', f"{docker_command}"])
             elif system == "Linux":
-                subprocess.Popen(['x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
+                # check if inside flatpak
+                if 'container' in os.environ:
+                    subprocess.Popen(['flatpak-spawn', '--host', 'x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
+                else:
+                    subprocess.Popen(['x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
             elif system == "Windows":
                 subprocess.Popen(['start', 'cmd', '/k', docker_command], shell=True)
             else:
@@ -64,7 +69,10 @@ class LogsOpener(QThread):
             if system == "Darwin":  # macOS
                 subprocess.Popen(['open', '-a', 'Terminal', '--', 'sh', '-c', f"{docker_command}"])
             elif system == "Linux":
-                subprocess.Popen(['x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
+                if 'container' in os.environ:
+                    subprocess.Popen(['flatpak-spawn', '--host', 'x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
+                else:
+                    subprocess.Popen(['x-terminal-emulator', '-e', f'sh -c "{docker_command}"'])
             elif system == "Windows":
                 subprocess.Popen(['start', 'cmd', '/k', docker_command], shell=True)
             else:
