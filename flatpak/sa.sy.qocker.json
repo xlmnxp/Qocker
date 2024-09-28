@@ -12,7 +12,7 @@
             "buildsystem": "simple",
             "build-commands": [
                 "mkdir -p docker",
-                "tar xzvf docker-20.10.9.tgz --strip-components=1 -C docker docker/docker",
+                "tar xzvf docker-20.10.9.tgz --strip-components=1 -C docker docker/docker --no-same-owner",
                 "install -D docker/docker /app/bin/docker"
             ],
             "sources": [
