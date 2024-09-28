@@ -11,7 +11,8 @@
             "name": "docker-cli",
             "buildsystem": "simple",
             "build-commands": [
-                "tar xzvf docker-20.10.9.tgz docker/docker",
+                "mkdir -p docker",
+                "tar xzvf docker-20.10.9.tgz --strip-components=1 -C docker docker/docker",
                 "install -D docker/docker /app/bin/docker"
             ],
             "sources": [
