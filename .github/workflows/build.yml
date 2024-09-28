@@ -18,5 +18,5 @@ jobs:
     - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
       with:
         bundle: qocker.flatpak
-        manifest-path: sa.sy.Qocker.json
+        manifest-path: flatpak/sa.sy.qocker.json
         cache-key: flatpak-builder-${{ github.sha }}
