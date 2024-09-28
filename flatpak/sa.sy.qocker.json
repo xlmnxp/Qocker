@@ -1,5 +1,5 @@
 {
-    "app-id": "sa.sy.Qocker",
+    "app-id": "sa.sy.qocker",
     "runtime": "org.kde.Platform",
     "runtime-version": "5.15-23.08",
     "sdk": "org.kde.Sdk",
@@ -42,7 +42,7 @@
         "--socket=wayland",
         "--env=DOCKER_HOST=unix:///run/docker.sock",
         "--filesystem=/run/docker.sock",
-        "--system-talk-name=org.freedesktop.DBus",
-        "--socket=session-bus"
+        "--socket=session-bus",
+        "--share=ipc"
     ]
 }
