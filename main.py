@@ -117,7 +117,13 @@ class DockerGUI(QMainWindow):
         self.images_tree = self.create_tree_widget(["ID", "Repository", "Tag", "Size"])
         self.networks_tree = self.create_tree_widget(["ID", "Name", "Driver"])
         self.volumes_tree = self.create_tree_widget(["Name", "Driver", "Mountpoint"])
-
+        
+        # enable sorting 
+        self.containers_tree.setSortingEnabled(True)
+        self.images_tree.setSortingEnabled(True)
+        self.networks_tree.setSortingEnabled(True)
+        self.volumes_tree.setSortingEnabled(True)
+        
         self.containers_tree.itemDoubleClicked.connect(self.open_terminal)
 
         # Add tree widgets to tabs
@@ -427,7 +433,6 @@ class DockerGUI(QMainWindow):
                     item = QTreeWidgetItem([id, repository, tag, size])
                     self.images_tree.addTopLevelItem(item)
                 
-                self.sort_tree_widget(self.images_tree, 0, Qt.DescendingOrder)
                 self.filter_tree(self.images_tree, self.images_tab.findChild(QLineEdit).text())
                 self.restore_selection(self.images_tree, selected_items)
         except subprocess.CalledProcessError as e:
