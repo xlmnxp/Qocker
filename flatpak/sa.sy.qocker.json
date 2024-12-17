@@ -43,7 +43,6 @@
         "--socket=wayland",
         "--env=DOCKER_HOST=unix:///run/docker.sock",
         "--filesystem=/run/docker.sock",
-        "--socket=session-bus",
         "--share=ipc"
     ]
 }
