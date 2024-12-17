@@ -1,0 +1,33 @@
+app-id: sa.sy.Qocker
+runtime: org.kde.Platform
+runtime-version: 5.15-23.08
+sdk: org.kde.Sdk
+base: com.riverbankcomputing.PyQt.BaseApp
+base-version: 5.15-23.08
+command: qocker
+modules:
+  - name: docker-cli
+    buildsystem: simple
+    build-commands:
+      - mkdir -p docker
+      - tar xzvf docker-20.10.9.tgz --strip-components=1 -C docker docker/docker --no-same-owner
+      - install -D docker/docker /app/bin/docker
+    sources:
+      - type: file
+        url: https://download.docker.com/linux/static/stable/x86_64/docker-20.10.9.tgz
+        sha256: caf74e54b58c0b38bb4d96c8f87665f29b684371c9a325562a3904b8c389995e
+  - name: qocker
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 main.py /app/bin/qocker
+    sources:
+      - type: dir
+        path: ".."
+finish-args:
+  - "--share=network"
+  - "--socket=fallback-x11"
+  - "--socket=wayland"
+  - "--env=DOCKER_HOST=unix:///run/docker.sock"
+  - "--filesystem=/run/docker.sock"
+  - "--socket=session-bus"
+  - "--share=ipc"
